@@ -1,2 +1,4 @@
 tasks:
-  - init: pip3 install -r requirements.txt
+  - init: python3 -m venv venv
+    init: pip3 install -r requirements.txt
+    command: source venv/bin/activate

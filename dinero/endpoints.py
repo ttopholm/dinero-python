@@ -1,15 +1,17 @@
 from functools import reduce
 from .exceptions import *
-#from .dto.product import Product
 from importlib import import_module
+from dataclasses import dataclass, field
+from dataclasses_json import dataclass_json
+from .dto.invoice import Invoice
+
 
 class BaseEndpoint(object):
-
     def __init__(self, request, endpoint):
         self.request = request
         self.endpoint = endpoint
         cls_name = self.__class__.__name__
-        module = import_module(f'dinero.dto.{cls_name.lower()}')
+        module = import_module(f"dinero.dto.{cls_name.lower()}")
         self.cls = getattr(module, cls_name.capitalize())
 
     def _url_with(self, *params):
@@ -20,7 +22,6 @@ class BaseEndpoint(object):
 
 
 class Endpoint(BaseEndpoint):
-
     def get(self, id):
         return self.cls.from_dict(self.request.get(self._url_with(id)))
 
@@ -55,5 +56,27 @@ class Endpoint(BaseEndpoint):
         if type(params) == self.cls:
             params = params.to_dict()
 
-        return self.request.post(self.endpoint, payload=params)
+        result = self.request.post(self.endpoint, payload=params)
+        return self.get(result.get(self.cls.get_id_field()))
 
+
+class BookEndpoint(BaseEndpoint):
+    def __init__(self, request, endpoint):
+        super(BookEndpoint, self).__init__(request, endpoint)
+
+    def book(self, invoice_guid, params):
+        if type(params) == self.cls:
+            params = params.to_dict()
+            
+        # Book returns an invoice    
+        return Invoice.from_dict(self.request.post(self._url_with(invoice_guid, "book"), params))
+
+
+class PaymentEndpoint(BaseEndpoint):
+    def __init__(self, request, endpoint):
+        super(PaymentEndpoint, self).__init__(request, endpoint)
+
+    def payment(self, invoice_guid, params):
+        if type(params) == self.cls:
+            params = params.to_dict()
+        return self.request.post(self._url_with(invoice_guid, "payments"), params)
